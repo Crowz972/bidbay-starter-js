@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useAuthStore } from "../store/auth";
 
-const { isAuthenticated, isAdmin, userData, token } = useAuthStore();
+const { isAuthenticated, isAdmin, userData, username, token } = useAuthStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -16,17 +16,28 @@ const productId = ref(route.params.productId);
 /**
  * @param {number|string|Date|VarDate} date
  */
-function formatDate(date:Date) {
+function formatDate(date:Date) : string{
   const options = { year: "numeric", month: "long", day: "numeric" };
   return new Date(date).toLocaleDateString("fr-FR", options);
 }
 
-async function getProduct() {
+function getDateShfdsf(date:Date) : string {
+  if ((new Date(date).getTime() < now.getTime())) {
+    return "Terminé";
+  }
+  else
+    {
+      return "Temps restant :" + new Date(new Date(date).getTime() - now.getTime())
+    }
+}
+
+async function getProduct() : Promise<void>{
   loading.value = true;
   error.value = false;
   try {
     const response = await fetch('http://localhost:3000/api/products/' + productId.value);
     if (!response.ok) {
+      error.value = true;
       throw new Error('Failed to fetch products');
     }
     const data = await response.json();
@@ -83,7 +94,7 @@ var now = new Date();
           <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted" data-test-countdown>
               <template v-if="product">
-                Temps restant : {{ new Date(new Date(product['endDate']).getTime() - now.getTime()) }}
+                {{getDateShfdsf(product['endDate'])}}
               </template>
             </h6>
           </div>
@@ -110,7 +121,7 @@ var now = new Date();
                 Editer
               </RouterLink>
               &nbsp;
-            <button class="btn btn-danger" data-test-delete-product>
+              <button v-if="(product && product['seller']['username'] &&  (username === product['seller']['username']) || isAdmin)" class="btn btn-danger" data-test-delete-product>
               Supprimer
             </button>
           </div>
@@ -136,7 +147,7 @@ var now = new Date();
         </ul>
 
         <h2 class="mb-3">Offres sur le produit</h2>
-        <table class="table table-striped" data-test-bids>
+        <table v-if="product && product['bids'] && product['bids'].length != 0" class="table table-striped" data-test-bids>
           <thead>
             <tr>
               <th scope="col">Enchérisseur</th>
@@ -156,17 +167,18 @@ var now = new Date();
                 </router-link>
               </td>
               <td data-test-bid-price> {{bid['price']}} €</td>
-              <td data-test-bid-date>{{bid['date']}}</td>
+              <td data-test-bid-date>{{formatDate(bid['date'])}}</td>
               <td>
-                <button class="btn btn-danger btn-sm" data-test-delete-bid>
+                {{ console.log( "us" + username)}}
+                {{ console.log( "bid" + bid['bidder']['username'])}}
+                <button v-if="(username === bid['bidder']['username']) || isAdmin" class="btn btn-danger btn-sm" data-test-delete-bid>
                   Supprimer
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
-        <p data-test-no-bids>Aucune offre pour le moment</p>
-
+        <p data-test-no-bids v-if="product && product['bids'] && product['bids'].length == 0">Aucune offre pour le moment</p>
         <form data-test-bid-form>
           <div class="form-group">
             <label for="bidAmount">Votre offre :</label>
