@@ -5,7 +5,15 @@ import { getDetails } from '../validators/index.js'
 
 const router = express.Router()
 
-// Récupérer tous les produits avec leurs vendeurs et enchères associées
+/**
+ * Récupère tous les produits avec leurs vendeurs et enchères associées.
+ * @name GET/api/products
+ * @function
+ * @memberof module:productsRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @param {NextFunction} next - Fonction middleware suivante.
+ */
 router.get('/api/products', async (req, res, next) => {
   const products = await Product.findAll({
     attributes: ['id', 'name', 'description', 'category', 'originalPrice', 'pictureUrl', 'endDate'],
@@ -25,6 +33,15 @@ router.get('/api/products', async (req, res, next) => {
 })
 
 // Récupérer un produit spécifique avec son vendeur et ses enchères associées
+/**
+ * Récupère un produit spécifique avec son vendeur et ses enchères associées.
+ * @name GET/api/products/:productId
+ * @function
+ * @memberof module:productsRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @throws {404} - Produit non trouvé
+ */
 router.get('/api/products/:productId', async (req, res) => {
   const product = await Product.findByPk(req.params.productId, {
     attributes: ['id', 'name', 'description', 'category', 'originalPrice', 'pictureUrl', 'endDate', 'sellerId'],
@@ -52,6 +69,16 @@ router.get('/api/products/:productId', async (req, res) => {
   res.json(product)
 })
 
+/**
+ * Crée un nouveau produit.
+ * @name POST/api/products
+ * @function
+ * @memberof module:productsRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @throws {400} - Champs invalides ou manquants
+ * @returns {ProductObject} 201 - Nouveau produit créé
+ */
 router.post('/api/products', authMiddleware, async (req, res) => {
   const { name, description, category, originalPrice, pictureUrl, endDate } = req.body
 
@@ -77,6 +104,17 @@ router.post('/api/products', authMiddleware, async (req, res) => {
 })
 
 // Mettre à jour un produit existant
+/**
+ * Met à jour un produit existant.
+ * @name PUT/api/products/:productId
+ * @function
+ * @memberof module:productsRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @throws {403} - Utilisateur non autorisé
+ * @throws {404} - Produit non trouvé
+ * @returns {ProductObject} 200 - Produit mis à jour
+ */
 router.put('/api/products/:productId', authMiddleware, async (req, res) => {
   const product = await Product.findByPk(req.params.productId, {
     attributes: ['id', 'name', 'description', 'category', 'originalPrice', 'pictureUrl', 'endDate', 'sellerId']
@@ -96,6 +134,17 @@ router.put('/api/products/:productId', authMiddleware, async (req, res) => {
 })
 
 // Supprime un produit existant
+/**
+ * Supprime un produit existant.
+ * @name DELETE/api/products/:productId
+ * @function
+ * @memberof module:productsRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @throws {403} - Utilisateur non autorisé
+ * @throws {404} - Produit non trouvé
+ * @returns {ProductObject} 204 - Produit supprimé
+ */
 router.delete('/api/products/:productId', authMiddleware, async (req, res) => {
   const product = await Product.findByPk(req.params.productId, {
     attributes: ['id', 'sellerId']

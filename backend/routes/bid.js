@@ -6,6 +6,17 @@ import { getDetails } from '../validators/index.js'
 const router = express.Router()
 
 // Supprime une enchère spécifique en fonction de son ID
+/**
+ * Supprime une enchère spécifique en fonction de son ID.
+ * @name DELETE/api/bids/:bidId
+ * @function
+ * @memberof module:bidRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @returns {BidObject} 204 - Enchère supprimée
+ * @throws {403} - Utilisateur non autorisé
+ * @throws {404} - Enchère non trouvée
+ */
 router.delete('/api/bids/:bidId', authMiddleware, async (req, res) => {
   const bid = await Bid.findByPk(req.params.bidId, {
     attributes: ['id', 'bidderId']
@@ -23,6 +34,19 @@ router.delete('/api/bids/:bidId', authMiddleware, async (req, res) => {
   res.status(204).json({})
 })
 
+// Crée une nouvelle enchère pour un produit spécifique
+/**
+ * Crée une nouvelle enchère pour un produit spécifique.
+ * @name POST/api/products/:productId/bids
+ * @function
+ * @memberof module:bidRouter
+ * @param {Request} req - Objet de requête Express.
+ * @param {Response} res - Objet de réponse Express.
+ * @returns {BidObject} 201 - Nouvelle enchère créée
+ * @throws {400} - Champs invalides ou manquants
+ * @throws {404} - Produit non trouvé
+ * 
+ */
 router.post('/api/products/:productId/bids', authMiddleware, async (req, res) => {
   const { price } = req.body
 
