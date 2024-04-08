@@ -1,22 +1,99 @@
+Bien sûr, voici le code avec des commentaires en français et des messages d'erreur en français:
+
 <script setup>
 import { ref, computed } from "vue";
 
-const loading = ref(false);
-const error = ref(false);
+// Initialisation des variables réactives
+const errorText = ref("");
+const loading = ref(true);
 
-async function fetchProducts() {
-  loading.value = true;
-  error.value = false;
+// Filtrage et tri des produits
+const typeToSort = ref(1); // type de tri : 1 (nom) ou 2 (enchère)
+const nameToFilter = ref(""); // nom du produit recherché
+const productsList = ref([]); // liste des produits récupérés depuis l'API
 
-  try {
-  } catch (e) {
-    error.value = true;
-  } finally {
-    loading.value = false;
-  }
+// Fonction pour formater la date
+function formatDate(date) {
+  const options = { year: "numeric", month: "long", day: "numeric" };
+  return new Date(date).toLocaleDateString("fr-FR", options);
 }
 
-fetchProducts();
+// Fonction pour récupérer la meilleure enchère ou le prix original du produit
+const bidUpperPrice = (product) => {
+  const bids = product.bids;
+
+  bids.sort((b1, b2) => b2.price - b1.price);
+
+  return bids?.[0]?.price ?? product.originalPrice;
+};
+
+// Fonction pour récupérer la liste des produits depuis l'API
+async function getProducts() {
+  const query = await fetch("http://localhost:3000/api/products", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const res = await query.json();
+
+  // Si la requête a réussi, on met à jour la liste des produits
+  if (query.ok) {
+    productsList.value = res;
+  } else { // Sinon, on affiche un message d'erreur
+    errorText.value =
+      `${res?.error}: ${res?.details}` ?? "Une erreur est survenue";
+  }
+
+  loading.value = false; // On indique que le chargement est terminé
+}
+
+// Fonction pour changer le type de tri
+function setSortValue(valeur) {
+  typeToSort.value = valeur;
+}
+
+getProducts(); // On appelle la fonction pour récupérer la liste des produits
+
+// On crée une variable calculée pour filtrer et trier les produits en fonction des critères choisis
+const filteredProducts = computed(() => {
+  let filteredProducts = productsList.value;
+
+  // On filtre les produits en fonction du nom recherché
+  if (nameToFilter.value.length > 0) {
+    filteredProducts = filteredProducts.filter((product) =>
+      product.name.toLowerCase().includes(nameToFilter.value.toLowerCase())
+    );
+  }
+
+  // On trie les produits en fonction du type de tri choisi
+  if (typeToSort.value == null) { // Si aucun type de tri n'a été choisi, on renvoie la liste filtrée telle quelle
+    return filteredProducts;
+  }
+
+  if (typeToSort.value == 1) { // Si le tri par nom a été choisi, on trie les produits par ordre alphabétique
+    filteredProducts.sort(function (a, b) {
+      return a.name.localeCompare(b.name);
+    });
+  } else if (typeToSort.value == 2) {
+    // Si le tri par enchère a été choisi, on trie les produits par ordre de prix de la meilleure enchère
+    filteredProducts.sort(function (a, b) {
+      if (a.bids.length > 0 && b.bids.length > 0)
+        return (
+          a.bids[a.bids.length - 1].price - b.bids[b.bids.length - 1].price
+        );
+      if (a.bids.length > 0 && b.bids.length == 0)
+        return a.bids[a.bids.length - 1].price - b.originalPrice;
+      if (a.bids.length == 0 && b.bids.length > 0)
+        return a.originalPrice - b.bids[b.bids.length - 1].price;
+      if (a.bids.length == 0 && b.bids.length == 0)
+        return a.originalPrice - b.originalPrice;
+    });
+  }
+
+  return filteredProducts;
+});
 </script>
 
 <template>
@@ -29,6 +106,7 @@ fetchProducts();
           <div class="input-group">
             <span class="input-group-text">Filtrage</span>
             <input
+              v-model="nameToFilter"
               type="text"
               class="form-control"
               placeholder="Filtrer par nom"
@@ -46,14 +124,21 @@ fetchProducts();
             aria-expanded="false"
             data-test-sorter
           >
-            Trier par nom
+            Trier par {{ typeToSort == 1 ? "nom" : "prix" }}
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
-              <a class="dropdown-item" href="#"> Nom </a>
+              <a class="dropdown-item" href="#" v-on:click="setSortValue(1)">
+                Nom
+              </a>
             </li>
             <li>
-              <a class="dropdown-item" href="#" data-test-sorter-price>
+              <a
+                class="dropdown-item"
+                href="#"
+                v-on:click="setSortValue(2)"
+                data-test-sorter-price
+              >
                 Prix
               </a>
             </li>
@@ -62,21 +147,32 @@ fetchProducts();
       </div>
     </div>
 
-    <div class="text-center mt-4" data-test-loading>
+    <div v-if="loading" class="text-center mt-4" data-test-loading>
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Chargement...</span>
       </div>
     </div>
 
-    <div class="alert alert-danger mt-4" role="alert" data-test-error>
-      Une erreur est survenue lors du chargement des produits.
+    <div
+      v-if="errorText"
+      class="alert alert-danger mt-4"
+      role="alert"
+      data-test-error
+    >
+      {{ errorText }}
     </div>
-    <div class="row">
-      <div class="col-md-4 mb-4" v-for="i in 10" data-test-product :key="i">
+    <div v-if="!loading && !errorText" class="row">
+      <div
+        class="col-md-4 mb-4"
+        v-for="product of filteredProducts"
+        data-test-product
+      >
         <div class="card">
-          <RouterLink :to="{ name: 'Product', params: { productId: 'TODO' } }">
+          <RouterLink
+            :to="{ name: 'Product', params: { productId: product.id } }"
+          >
             <img
-              src="https://picsum.photos/id/403/512/512"
+              :src="product.pictureUrl"
               data-test-product-picture
               class="card-img-top"
             />
@@ -85,27 +181,37 @@ fetchProducts();
             <h5 class="card-title">
               <RouterLink
                 data-test-product-name
-                :to="{ name: 'Product', params: { productId: 'TODO' } }"
+                :to="{ name: 'Product', params: { productId: product.id } }"
               >
-                Machine à écrire
+                {{ product.name }}
               </RouterLink>
             </h5>
             <p class="card-text" data-test-product-description>
-              Machine à écrire vintage en parfait état de fonctionnement
+              {{ product.description }}
             </p>
             <p class="card-text">
               Vendeur :
               <RouterLink
                 data-test-product-seller
-                :to="{ name: 'User', params: { userId: 'TODO' } }"
+                :to="{ name: 'User', params: { userId: product.seller.id } }"
               >
-                alice
+                {{ product.seller.username }}
               </RouterLink>
             </p>
             <p class="card-text" data-test-product-date>
-              En cours jusqu'au 05/04/2026
+              En cours jusqu'au {{ formatDate(product.endDate) }}
             </p>
-            <p class="card-text" data-test-product-price>Prix actuel : 42 €</p>
+            <div v-if="product.bids.length > 0">
+              <p class="card-text" data-test-product-price>
+                Prix actuel :
+                {{ bidUpperPrice(product) }} €
+              </p>
+            </div>
+            <div v-if="product.bids.length == 0">
+              <p class="card-text" data-test-product-price>
+                Prix de départ : {{ product.originalPrice }} €
+              </p>
+            </div>
           </div>
         </div>
       </div>
